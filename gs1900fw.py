@@ -146,8 +146,6 @@ IH_COMP_EXT_LOOKUP = ['dat', 'gz', 'bz2', 'lzma']
 IH_MAGIC = 0x83800000  # ZyXEL are using their own magic for some reason
 IH_NMLEN = 32    # Image Name Length
 
-IH_HCRC_XOR = 0x9F3FF3D7  # ZyXEL seem to XOR the ih_hcrc with this
-
 IH_LOAD_ADDR = 0x80000000
 IH_EP_ADDR = 0x8026B000
 
@@ -338,9 +336,13 @@ class UBootImage(object):
     def checksums(self):
         """Check the checksums of header and image"""
         success = True
-
-        headerpart = self.raw_header[8:64]
-        header_crc = (binascii.crc32(headerpart) & 0xFFFFFFFF) ^ IH_HCRC_XOR
+        header_struct = struct.pack(">IIIIIIIBBBB32s",
+                                    self.ih_magic, 0,
+                                    self.ih_time, self.ih_size, self.ih_load,
+                                    self.ih_ep, self.ih_dcrc, self.ih_os,
+                                    self.ih_arch, self.ih_type, self.ih_comp,
+                                    self.ih_name)
+        header_crc = binascii.crc32(header_struct) & 0xFFFFFFFF
         print("Header checksum: Expected %s, found %s" % (
             as_hex(self.ih_hcrc),
             as_hex(header_crc)))
@@ -490,19 +492,23 @@ class UBootImage(object):
             self.ih_dcrc = crc32
 
         # Now the header is complete, calculate its CRC32
-        header_struct = struct.pack(">IIIIIBBBB32s",
+        header_struct = struct.pack(">IIIIIIIBBBB32s",
+                                    self.ih_magic, 0,
                                     self.ih_time, self.ih_size, self.ih_load,
                                     self.ih_ep, self.ih_dcrc, self.ih_os,
                                     self.ih_arch, self.ih_type, self.ih_comp,
                                     self.ih_name)
         self.ih_hcrc = binascii.crc32(header_struct) & 0xFFFFFFFF
-        self.ih_hcrc = self.ih_hcrc ^ IH_HCRC_XOR
+        header_struct = struct.pack(">IIIIIIIBBBB32s",
+                                    self.ih_magic, self.ih_hcrc,
+                                    self.ih_time, self.ih_size, self.ih_load,
+                                    self.ih_ep, self.ih_dcrc, self.ih_os,
+                                    self.ih_arch, self.ih_type, self.ih_comp,
+                                    self.ih_name)
 
         # Write out the header file
         with open("%s-header" % firmware_file, "wb") as header:
             print "  Writing: %s-header" % firmware_file
-            header.write(struct.pack(">I", self.ih_magic))
-            header.write(struct.pack(">I", self.ih_hcrc))
             header.write(header_struct)
 
         # Write out final firmware file
