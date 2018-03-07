@@ -4,6 +4,7 @@
 from __future__ import print_function
 
 from builtins import range
+from builtins import str
 
 import argparse
 import binascii
@@ -328,7 +329,7 @@ class UBootImage(object):
     def fwinfo(self):
         """Collect information about the firmware, as a string"""
         info = ""
-        info += "Firmware name: %s\n" % self.ih_name
+        info += "Firmware name: %s\n" % str(self.ih_name, 'utf-8')
         timestamp = datetime.datetime.fromtimestamp(self.ih_time)
         timestr = timestamp.strftime("%Y-%m-%d %H:%M:%S")
         info += "Creation time: %s UTC\n" % timestr
@@ -393,15 +394,14 @@ class UBootImage(object):
             gzf.read(struct.unpack("<H", gzf.read(2)))
 
         # Read a null-terminated string containing the filename
-        fname = []
+        fname = b''
         while True:
             fnamebytes = gzf.read(1)
             if not fnamebytes or fnamebytes == b'\000':
                 break
-            fname.append(fnamebytes)
+            fname += fnamebytes
 
-        filename = ''.join(fname)
-        return filename
+        return str(fname, 'utf-8')
 
     def split_fw(self, filepath):
         """Save the parts of the firmware as files"""
