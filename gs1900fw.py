@@ -142,8 +142,6 @@ IH_COMP_LZMA = 3    # lzma Compression Used
 IH_COMP_LOOKUP = ['None', 'gzip', 'bzip2', 'lzma']
 IH_COMP_EXT_LOOKUP = ['dat', 'gz', 'bz2', 'lzma']
 
-# IH_MAGIC = 0x27051956    # Image Magic Number
-IH_MAGIC = 0x83800000  # ZyXEL are using their own magic for some reason
 IH_NMLEN = 32    # Image Name Length
 
 IH_LOAD_ADDR = 0x80000000
@@ -186,6 +184,12 @@ def parse_options(args=None):
                         dest="firmware_name",
                         default=None,
                         help="Name for the firmware")
+    parser.add_argument("-m", "--magic",
+                        action="store",
+                        dest="magic",
+                        type=int,
+                        default=0x83800000,
+                        help="Vendor specific magic integer")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-i", "--info",
                        action="store_true",
@@ -289,7 +293,7 @@ class UBootImage(object):
             self.raw_header = fwfile.read(64)
             self.raw_image = fwfile.read()
 
-    def parse_header(self):
+    def parse_header(self, magic):
         """Parse the image header values"""
         header = struct.unpack(">IIIIIIIBBBB32s", self.raw_header)
         self.ih_magic = header[0]
@@ -306,7 +310,7 @@ class UBootImage(object):
         self.ih_name = header[11]
 
         print("Checking file magic: Expected %s, found %s" % (
-            as_hex(IH_MAGIC),
+            as_hex(magic),
             as_hex(self.ih_magic))
              )
 
@@ -448,10 +452,10 @@ class UBootImage(object):
                         ramfsfile.write(vmfile.read())
                         ramfsfile.close()
 
-    def assemble(self, firmware_file, kernel_file,
+    def assemble(self, magic, firmware_file, kernel_file,
                  initramfs_file, firmware_name):
         """Assemble a new firmware image file"""
-        self.ih_magic = IH_MAGIC
+        self.ih_magic = magic
         self.ih_time = int(time.time())
         self.ih_load = IH_LOAD_ADDR
         self.ih_ep = IH_EP_ADDR
@@ -533,10 +537,10 @@ class GS1900FW(object):
 
     def parse_fw(self):
         """Parse a firmware and return a useful data structure"""
-        self.uboot.parse_header()
+        self.uboot.parse_header(self.options.magic)
         self.uboot.parse_image()
 
-        if self.uboot.ih_magic != IH_MAGIC:
+        if self.uboot.ih_magic != self.options.magic:
             err("File does not appear to be a valid firmware", False)
             return False
         else:
@@ -570,7 +574,8 @@ class GS1900FW(object):
            not self.options.firmware_name:
             err("For -a you must specify -w, -k, -r and -l")
 
-        self.uboot.assemble(self.options.firmware_file,
+        self.uboot.assemble(self.options.magic,
+                            self.options.firmware_file,
                             self.options.kernel_file,
                             self.options.initramfs_file,
                             self.options.firmware_name)
