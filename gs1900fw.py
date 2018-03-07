@@ -10,7 +10,7 @@ import binascii
 import datetime
 import gzip
 import os
-import StringIO
+from io import BytesIO
 import struct
 import sys
 import time
@@ -372,7 +372,7 @@ class UBootImage(object):
         """Attempt to figure out the filename of a given image part"""
         filename = None
 
-        fileobj = StringIO.StringIO(self.parts[partnum])
+        fileobj = BytesIO(self.parts[partnum])
         gzobj = gzip.GzipFile(fileobj=fileobj, mode="rb")
         gzf = gzobj.fileobj
 
@@ -424,7 +424,7 @@ class UBootImage(object):
                     filename = filepath + "-part-%d" % i
 
                 print("  Decompressing to: %s" % filename)
-                fileobj = StringIO.StringIO(self.parts[i])
+                fileobj = BytesIO(self.parts[i])
                 gzobj = gzip.GzipFile(fileobj=fileobj, mode="rb")
                 fileobj.seek(0)
                 gzobj.fileobj.seek(0)
