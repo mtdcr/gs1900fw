@@ -417,6 +417,8 @@ class UBootImage(object):
                 print("  Writing to: %s" % filepath_part)
                 fwfile.write(self.parts[i])
                 fwfile.close()
+            mtime = self.ih_time
+            os.utime(filepath_part, (mtime, mtime))
 
             if self.ih_comp == IH_COMP_GZIP:
                 filename = self.find_gzip_name(i)
@@ -437,6 +439,8 @@ class UBootImage(object):
                         # Almost certainly not an error, just a gzip module bug
                         partfile.write(gzobj.extrabuf[gzobj.offset -
                                                       gzobj.extrastart:])
+                mtime = gzobj.mtime
+                os.utime(filename, (mtime, mtime))
 
             if i == 0:
                 # Split the vmlinux_org.bin into kernel and initramfs
@@ -451,18 +455,23 @@ class UBootImage(object):
                         print("  Writing kernel to: %s-kernel" % filename)
                         kernelfile.write(vmfile.read(initramfs_offset))
                         kernelfile.close()
+                    os.utime("%s-kernel" % filename, (mtime, mtime))
                     vmfile.seek(initramfs_offset)
                     with open("%s-initramfs.cpio.gz" % filename, "wb") as ramfsfile:
                         print ("  Writing initramfs to: %s-initramfs.cpio.gz" %
                                filename)
                         ramfsfile.write(vmfile.read())
                         ramfsfile.close()
+                    gzobj = gzip.GzipFile("%s-initramfs.cpio.gz" % filename, mode="rb")
+                    gzobj.read()
+                    mtime = gzobj.mtime
+                    os.utime("%s-initramfs.cpio.gz" % filename, (mtime, mtime))
 
     def assemble(self, magic, firmware_file, kernel_file,
                  initramfs_file, firmware_name):
         """Assemble a new firmware image file"""
         self.ih_magic = magic
-        self.ih_time = int(time.time())
+        self.ih_time = int(max(os.path.getmtime(kernel_file), os.path.getmtime(initramfs_file)))
         self.ih_load = IH_LOAD_ADDR
         self.ih_ep = IH_EP_ADDR
         self.ih_os = IH_OS_LINUX
@@ -480,7 +489,7 @@ class UBootImage(object):
         # Read in kernel and ramfs, concat them, gzip the result
         objfilename = "%s-kernel-initramfs.gz" % firmware_name
         objfile = open(objfilename, "wb")
-        gzfile = gzip.GzipFile("vmlinux_org.bin", "wb", 9, objfile)
+        gzfile = gzip.GzipFile("vmlinux_org.bin", "wb", 9, objfile, mtime=self.ih_time)
         with open(kernel_file, "rb") as kernel:
             print("  Injecting: %s" % kernel_file)
             gzfile.write(kernel.read())
