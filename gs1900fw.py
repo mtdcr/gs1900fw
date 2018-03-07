@@ -378,7 +378,7 @@ class UBootImage(object):
 
         gzf.seek(0)
         magic = gzf.read(2)
-        if magic != '\037\213':
+        if magic != b'\037\213':
             err("Part %d is not gzipped" % partnum, False)
             return filename
 
@@ -396,7 +396,7 @@ class UBootImage(object):
         fname = []
         while True:
             fnamebytes = gzf.read(1)
-            if not fnamebytes or fnamebytes == '\000':
+            if not fnamebytes or fnamebytes == b'\000':
                 break
             fname.append(fnamebytes)
 
@@ -440,7 +440,7 @@ class UBootImage(object):
                 # Split the vmlinux_org.bin into kernel and initramfs
                 with open(filename, "rb") as vmfile:
                     vmdata = vmfile.read()
-                    initramfs_offset = vmdata.find('\x1F\x8B\x08')
+                    initramfs_offset = vmdata.find(b'\x1F\x8B\x08')
                     if initramfs_offset == -1:
                         err("Unable to find initramfs", False)
                         break
@@ -472,7 +472,7 @@ class UBootImage(object):
         if padsize < 0:
             err("Firmware name/version must be 32 characters or less")
 
-        self.ih_name = firmware_name + "\0" * padsize
+        self.ih_name = firmware_name + b"\0" * padsize
 
         print("Assembling: %s" % firmware_file)
         # Read in kernel and ramfs, concat them, gzip the result
