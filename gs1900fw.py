@@ -3,6 +3,8 @@
 
 from __future__ import print_function
 
+from builtins import range
+
 import argparse
 import binascii
 import datetime
@@ -406,7 +408,7 @@ class UBootImage(object):
 
         ext = lookup_magic(IH_COMP_EXT_LOOKUP, self.ih_comp)
 
-        for i in xrange(0, len(self.parts)):
+        for i in range(0, len(self.parts)):
             print("Examining part: %d" % i)
             filepath_part = filepath + "-part-%d.%s" % (i, ext)
             with open(filepath_part, "wb") as fwfile:
