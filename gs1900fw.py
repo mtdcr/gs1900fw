@@ -452,8 +452,8 @@ class UBootImage(object):
                         kernelfile.write(vmfile.read(initramfs_offset))
                         kernelfile.close()
                     vmfile.seek(initramfs_offset)
-                    with open("%s-initramfs.gz" % filename, "wb") as ramfsfile:
-                        print ("  Writing initramfs to: %s-initramfs.gz" %
+                    with open("%s-initramfs.cpio.gz" % filename, "wb") as ramfsfile:
+                        print ("  Writing initramfs to: %s-initramfs.cpio.gz" %
                                filename)
                         ramfsfile.write(vmfile.read())
                         ramfsfile.close()
