@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 
+from builtins import bytes
 from builtins import range
 from builtins import str
 
@@ -472,7 +473,7 @@ class UBootImage(object):
         if padsize < 0:
             err("Firmware name/version must be 32 characters or less")
 
-        self.ih_name = firmware_name + b"\0" * padsize
+        self.ih_name = bytes(firmware_name, 'utf-8') + b"\0" * padsize
 
         print("Assembling: %s" % firmware_file)
         # Read in kernel and ramfs, concat them, gzip the result
