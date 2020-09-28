@@ -16,7 +16,6 @@ import os
 from io import BytesIO
 import struct
 import sys
-import time
 
 DEBUG = False
 
