@@ -474,10 +474,10 @@ class UBootImage(object):
                         ramfsfile.write(vmdata[initramfs_offset:])
                         ramfsfile.close()
                     if initramfs_format == 'cpio.gz':
-                        gzobj = gzip.GzipFile(initramfs_filename, mode="rb")
-                        gzobj.read()
-                        mtime = gzobj.mtime
-                        os.utime("%s-initramfs.cpio.gz" % filename, (mtime, mtime))
+                        with gzip.GzipFile(initramfs_filename, mode="rb") as gzobj:
+                            gzobj.read1()
+                            mtime = gzobj.mtime
+                            os.utime(initramfs_filename, (mtime, mtime))
 
     def assemble(self, magic, firmware_file, kernel_file,
                  initramfs_file, firmware_name):
