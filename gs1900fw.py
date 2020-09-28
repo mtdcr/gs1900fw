@@ -446,26 +446,36 @@ class UBootImage(object):
                 # Split the vmlinux_org.bin into kernel and initramfs
                 with open(filename, "rb") as vmfile:
                     vmdata = vmfile.read()
-                    initramfs_offset = vmdata.find(b'\x1F\x8B\x08')
+
+                initramfs_format = None
+                initramfs_offset = vmdata.find(b'\x1F\x8B\x08')
+                if initramfs_offset != -1:
+                    initramfs_format = 'cpio.gz'
+                else:
+                    initramfs_offset = vmdata.find(b'07070100')
+                    if initramfs_offset != -1:
+                        initramfs_format = 'cpio'
+
+                with open("%s-kernel" % filename, "wb") as kernelfile:
+                    print("  Writing kernel to: %s-kernel" % filename)
                     if initramfs_offset == -1:
-                        err("Unable to find initramfs", False)
-                        break
-                    vmfile.seek(0)
-                    with open("%s-kernel" % filename, "wb") as kernelfile:
-                        print("  Writing kernel to: %s-kernel" % filename)
-                        kernelfile.write(vmfile.read(initramfs_offset))
-                        kernelfile.close()
-                    os.utime("%s-kernel" % filename, (mtime, mtime))
-                    vmfile.seek(initramfs_offset)
-                    with open("%s-initramfs.cpio.gz" % filename, "wb") as ramfsfile:
-                        print ("  Writing initramfs to: %s-initramfs.cpio.gz" %
-                               filename)
-                        ramfsfile.write(vmfile.read())
+                        kernelfile.write(vmdata)
+                    else:
+                        kernelfile.write(vmdata[:initramfs_offset])
+                    kernelfile.close()
+                os.utime("%s-kernel" % filename, (mtime, mtime))
+
+                if initramfs_offset != -1:
+                    initramfs_filename = "%s-initramfs.%s" % (filename, initramfs_format)
+                    with open(initramfs_filename, "wb") as ramfsfile:
+                        print("  Writing initramfs to: %s" % initramfs_filename)
+                        ramfsfile.write(vmdata[initramfs_offset:])
                         ramfsfile.close()
-                    gzobj = gzip.GzipFile("%s-initramfs.cpio.gz" % filename, mode="rb")
-                    gzobj.read()
-                    mtime = gzobj.mtime
-                    os.utime("%s-initramfs.cpio.gz" % filename, (mtime, mtime))
+                    if initramfs_format == 'cpio.gz':
+                        gzobj = gzip.GzipFile(initramfs_filename, mode="rb")
+                        gzobj.read()
+                        mtime = gzobj.mtime
+                        os.utime("%s-initramfs.cpio.gz" % filename, (mtime, mtime))
 
     def assemble(self, magic, firmware_file, kernel_file,
                  initramfs_file, firmware_name):
