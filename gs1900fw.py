@@ -429,18 +429,21 @@ class UBootImage(object):
 
                 print("  Decompressing to: %s" % filename)
                 fileobj = BytesIO(self.parts[i])
-                gzobj = gzip.GzipFile(fileobj=fileobj, mode="rb")
-                fileobj.seek(0)
-                gzobj.fileobj.seek(0)
-                with open(filename, "wb") as partfile:
-                    try:
-                        partfile.write(gzobj.read())
-                    except IOError:
-                        # Almost certainly not an error, just a gzip module bug
-                        partfile.write(gzobj.extrabuf[gzobj.offset -
-                                                      gzobj.extrastart:])
-                mtime = gzobj.mtime
-                os.utime(filename, (mtime, mtime))
+                with gzip.GzipFile(fileobj=fileobj, mode="rb") as gzobj:
+                    with open(filename, "wb") as partfile:
+                        try:
+                            partfile.write(gzobj.read())
+                        except IOError:
+                            # https://bugs.python.org/issue24301
+                            gzobj.rewind()
+                            try:
+                                while True:
+                                    partfile.write(gzobj.read1())
+                            except OSError:
+                                pass
+
+                    mtime = gzobj.mtime
+                    os.utime(filename, (mtime, mtime))
 
             if i == 0:
                 # Split the vmlinux_org.bin into kernel and initramfs
